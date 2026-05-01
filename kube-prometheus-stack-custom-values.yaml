@@ -1,0 +1,125 @@
+# kube-prometheus-stack-custom-values.yaml
+alertmanager:
+  alertmanagerSpec:
+    retention: 120h
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: openebs-hostpath
+          resources:
+            requests:
+              storage: 5Gi
+  ingress:
+    enabled: false # Typically exposed via Ingress for external access, but we'll keep it internal for now
+
+prometheus:
+  prometheusSpec:
+    retention: 15d
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: openebs-hostpath
+          resources:
+            requests:
+              storage: 5Gi
+
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+  ingress:
+    enabled: false # Typically exposed via Ingress for external access, but we'll keep it internal for now
+
+grafana:
+  admin:
+    existingSecret: "grafana-admin-credentials"
+    userKey: "admin-user"
+    passwordKey: "admin-password"
+
+  # ← ADD THIS BLOCK
+  grafana.ini:
+    plugins:
+      enable_alpha: false
+  
+  # ← disable plugin downloads
+  plugins: []
+
+  # ← give more startup time
+  livenessProbe:
+    initialDelaySeconds: 120
+    timeoutSeconds: 30
+    failureThreshold: 15
+
+  readinessProbe:
+    initialDelaySeconds: 60
+  
+  securityContext:
+    runAsUser: 472
+    runAsGroup: 472
+    fsGroup: 472
+  initChownData:
+    enabled: false   # skip chown — hostpath handles it
+
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: selfsigned-issuer
+    hosts:
+      - grafana.k8s.local
+    tls:
+      - secretName: grafana-tls
+        hosts:
+          - grafana.k8s.local
+  persistence:
+    enabled: true
+    storageClassName: openebs-hostpath
+    size: 5Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Enable default dashboards and rules
+defaultRules:
+  create: true
+
+# Exporters
+kubeApiServer:
+  enabled: true
+kubelet:
+  enabled: true
+kubeProxy:
+  enabled: true
+kubeScheduler:
+  enabled: true
+nodeExporter:
+  enabled: true
+
+# ServiceMonitory for custom application(example)
+# prometheus-operator:
+#   serviceMonitor:
+#     enabled: true
+#   additionalServiceMonitors:
+#     - name: my-app-servicemonitor
+#     selector:
+#       matchLabels:
+#         app: my-application
+#     endpoints:
+#       - port: http-metrics
+#       - path: /metrics
+
