@@ -1,3 +1,16 @@
+# The Problem It Solves
+In a production Kubernetes environment, understanding the health and performance
+of your clusters and applications is paramount. This project addresses the challenge of
+gaining deep visibility into cluster metrics, application performance, and resource
+utilization by deploying a robust, industry-standard monitoring solution.
+
+# Architecture Description
+The architecture involves deploying the kube-prometheus-stack Helm chart, which
+includes Prometheus for metric collection, Alertmanager for alerting, and Grafana for
+visualization. Prometheus scrapes metrics from Kubernetes components (kube-statemetrics, node-exporter) and application pods via ServiceMonitors. Grafana connects
+to Prometheus as a data source to display dashboards. Alertmanager receives alerts
+from Prometheus and routes them to configured receivers.
+
 # Kubernetes Cluster Monitoring Setup
 > Prometheus + Grafana + OpenEBS Hostpath + Traefik + cert-manager
 > Tested on: kubeadm v1.30, 3-node KVM cluster (1 master + 2 workers)
@@ -59,15 +72,7 @@ kubectl get crd | grep cert-manager
 ### Apply ClusterIssuer
 
 ```bash
-# clusterissuer.yaml
-cat <<EOF | kubectl apply -f -
-apiVersion: cert-manager.io/v1
-kind: ClusterIssuer
-metadata:
-  name: selfsigned-issuer
-spec:
-  selfSigned: {}
-EOF
+kubectl apply -f clusterissuer.yaml
 ```
 
 ---
@@ -148,18 +153,7 @@ kubectl create namespace monitoring
 ### Grafana Admin Credentials Secret
 
 ```bash
-# secrets.yaml
-cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: Secret
-metadata:
-  name: grafana-admin-credentials
-  namespace: monitoring
-type: Opaque
-stringData:
-  admin-user: admin
-  admin-password: YOUR_SECURE_PASSWORD_HERE
-EOF
+kubectl apply -f secrets.yaml
 ```
 
 ---
@@ -261,12 +255,6 @@ ns=json.load(sys.stdin)
 ns['spec']['finalizers']=[]
 print(json.dumps(ns))
 " | kubectl replace --raw /api/v1/namespaces/<ns>/finalize -f -
-```
-
-### Webhook blocking Longhorn/resource deletion
-```bash
-kubectl delete mutatingwebhookconfiguration longhorn-webhook-mutator
-kubectl delete validatingwebhookconfiguration longhorn-webhook-validator
 ```
 
 ### Force delete stuck CRDs
